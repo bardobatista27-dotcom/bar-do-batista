@@ -441,6 +441,17 @@ body.cliente .tematg{top:14px!important;right:14px!important;bottom:auto!importa
 body.cliente.netlify .cl-cart{bottom:84px}
 body.cliente #toasts{bottom:96px!important}
 body.cliente.netlify #toasts{bottom:164px!important}
+.dev-l{margin-top:14px;border-top:1px solid var(--line);padding-top:12px}.dev-h{font-weight:700;margin-bottom:6px}
+.dev{display:flex;gap:12px;align-items:center;padding:9px 0;border-bottom:1px dashed var(--line)}.dev:last-child{border-bottom:none}
+.dev-i{font-size:24px;opacity:.55}.dev.on .dev-i{opacity:1}
+.fd-pick{margin:4px 0 10px;padding:10px 12px;border:1.5px dashed var(--amb);border-radius:12px}
+.fd-row{display:flex;gap:12px;align-items:center;padding:11px 4px;border-bottom:1px dashed var(--line)}.fd-row:last-of-type{border-bottom:none}
+.fd-row.velho .fd-v{color:#ff8a8a}.fd-av{flex:none;width:40px;height:40px;border-radius:50%;background:var(--amb);color:#1a0f08;font:800 18px 'Barlow Condensed',sans-serif;display:flex;align-items:center;justify-content:center}
+.fd-v{font:800 21px 'Barlow Condensed',sans-serif;color:var(--atx);min-width:96px;text-align:right}.fd-v.ok{color:var(--ok);font-size:15px}
+.fd-busca{width:100%;margin-bottom:6px}.fd-lk{color:var(--atx);cursor:pointer;text-decoration:underline}
+.fd-top{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;padding:12px 14px;border-radius:12px;background:rgba(255,198,0,.07);border:1px solid var(--line)}
+.fd-big{font:800 32px 'Barlow Condensed',sans-serif}.fd-big.ok{color:var(--ok)}
+.fd-hist{max-height:300px;overflow:auto}.fd-h{display:flex;gap:10px;align-items:center;padding:8px 0;border-bottom:1px dashed var(--line)}.fd-h>span:first-child{font-size:20px}.fd-h .ok{color:var(--ok);font-weight:700}.fd-h .amb{font-weight:700}
 </style>
 </head>
 <body>
@@ -455,7 +466,7 @@ body.cliente.netlify #toasts{bottom:164px!important}
 <script>
 /* ============ utilidades ============ */
 const DB='barDoBatista_v1';
-const PROT_PADRAO=['semEstoque','cancelar','remover','desconto','desfazerPag','excluirVenda','excluir','zerar','config','socios'];
+const PROT_PADRAO=['semEstoque','fiadoLimite','cancelar','remover','desconto','desfazerPag','excluirVenda','excluir','zerar','config','socios'];
 const $=s=>document.querySelector(s);
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
 const R=v=>(Number(v)||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
@@ -485,7 +496,7 @@ const EMOJI_CAT={'Combustível':'⛽','Estacionamento/Pedágio':'🅿️','Frete
 /* ============ dados ============ */
 let S;
 const UI={tab:'painel',comandaId:null,alvo:null,busca:'',cat:'',estBusca:'',estCat:'',rp:null,bq:{q:'',tipo:'tudo',de:'',ate:'',forma:'',lim:100},mes:mesAtual(),cMes:mesAtual(),dMes:mesAtual(),modals:[],fmode:null,nDiv:2,sel:[],pay:null};
-function blank(){return{config:{nome:'Bar do Batista',mesas:12,taxa:10,locais:['Supermercado','CEASA','Atacadista','Distribuidora de bebidas','Açougue','Padaria','Outro'],ultimoBackup:null,tema:'escuro',logo:'',bloqueioMin:30,protegidas:PROT_PADRAO.slice(),caixinhas:[]},socios:[],log:[],repasses:[],notas:[],mapaNotas:{},socMovs:[],itens:[],cardapio:[],compras:[],despesas:[],fixos:[],movs:[],abertas:[],vendas:[],exemplo:false}}
+function blank(){return{config:{nome:'Bar do Batista',mesas:12,taxa:10,locais:['Supermercado','CEASA','Atacadista','Distribuidora de bebidas','Açougue','Padaria','Outro'],ultimoBackup:null,tema:'escuro',logo:'',bloqueioMin:30,protegidas:PROT_PADRAO.slice(),caixinhas:[]},socios:[],log:[],repasses:[],notas:[],mapaNotas:{},socMovs:[],itens:[],cardapio:[],compras:[],despesas:[],fixos:[],movs:[],abertas:[],vendas:[],clientes:[],fiadoPg:[],exemplo:false}}
 function load(){try{const j=localStorage.getItem(DB);return j?JSON.parse(j):null}catch(e){return null}}
 function save(){if(window.__cli)return;if(typeof NV!=='undefined'&&NV.ativo&&!NV.carregando){try{if(nvDiff())nvAgendar();publicarCardapio()}catch(e){console.warn(e)}}try{localStorage.setItem(DB,JSON.stringify(S))}catch(e){toast('⚠️ Não consegui salvar no navegador','bad')}}
 const itemById=id=>S.itens.find(i=>i.id===id);
@@ -759,22 +770,24 @@ function payPanel(c,t){
   <label class="f">Valor<input id="payValor" inputmode="decimal" value="${p.valor?N(p.valor,2):''}" placeholder="0,00" oninput="UI.pay.valor=num(this.value);updTroco()"></label>
   <div class="pf">${FORMAS.map(([f,e])=>`<button class="${p.forma===f?'on':''}" onclick="UI.pay.valor=num($('#payValor').value);UI.pay.forma='${f}';refresh()"><span>${e}</span>${f}</button>`).join('')}</div>
   ${p.forma==='Dinheiro'?`<div class="row"><label class="f" style="flex:1">Cliente entregou (R$)<input id="payRec" inputmode="decimal" value="${esc(p.recebido)}" oninput="UI.pay.recebido=this.value;updTroco()" placeholder="Ex.: 100"></label><div style="flex:1"><small class="mut">Troco</small><div id="trocoV" style="font-size:24px;font-weight:800" class="amb">${troco>0?R(troco):'—'}</div></div></div>`:''}
-  ${p.forma==='Fiado'?`<p class="help">Fiado entra como pagamento para fechar a mesa. Anote o nome no campo do cliente/pessoa.</p>`:''}
+  ${p.forma==='Fiado'&&p.caixinha===undefined?fiadoPicker(p,c):''}
   <div class="mf"><button class="btn" onclick="UI.pay=null;refresh()">Voltar</button><button class="btn p" onclick="confirmPay()">Confirmar recebimento</button></div></div>`;
 }
 function updTroco(){const p=UI.pay,e=$('#trocoV');if(!e)return;const t=num(p.recebido)-num(p.valor);e.textContent=t>0?R(t):'—'}
-function confirmPay(){
+async function confirmPay(){
   const c=getC(UI.comandaId),p=UI.pay;
   const valor=r2(num($('#payValor').value));if(!(valor>0)){toast('Informe um valor','bad');return}
+  let cli=null;if(p.forma==='Fiado'){if(p.caixinha!==undefined){toast('Caixinha não pode ser no fiado','bad');return}cli=await confirmarFiado(p,valor);if(!cli)return}
   const troco=p.forma==='Dinheiro'?Math.max(r2(num(p.recebido)-valor),0):0;
   if(p.caixinha!==undefined){const nome=(S.config.caixinhas||[])[p.caixinha]||'Caixinha';const pid=uid();
     c.pagamentos.push({id:pid,valor,forma:p.forma,pessoaId:null,label:'para '+nome,troco,ts:Date.now(),itemIds:[]});
     (c.extras||(c.extras=[])).push({id:uid(),tipo:'caixinha',nome,valor,forma:p.forma,pagId:pid,ts:Date.now()});
     UI.pay=null;save();toast(`🎁 ${R(valor)} para ${esc(nome)}`);refresh();render();return}
-  c.pagamentos.push({id:uid(),valor,forma:p.forma,pessoaId:p.pessoaId||null,label:p.label||'',troco,ts:Date.now(),itemIds:p.itemIds||[]});
+  c.pagamentos.push({id:uid(),valor,forma:p.forma,pessoaId:p.pessoaId||null,label:(p.label||'')+(cli?(p.label?' · ':'')+'fiado de '+cli.nome:''),troco,ts:Date.now(),itemIds:p.itemIds||[],...(cli?{clienteId:cli.id}:{})});
+  if(cli)registrar('fiado',`${cli.nome} pendurou ${R(valor)} · ${labelC(c)}`,nomeAtual());
   (p.itemIds||[]).forEach(id=>{const i=c.itens.find(x=>x.id===id);if(i)i.pago=true});
   UI.pay=null;UI.sel=[];save();
-  const t=calc(c);toast(`Recebido ${R(valor)} no ${p.forma}`+(troco?` · troco ${R(troco)}`:''));
+  const t=calc(c);toast(cli?`📒 ${R(valor)} pendurado para ${esc(cli.nome)} · deve ${R(saldoCli(cli.id))}`:`Recebido ${R(valor)} no ${p.forma}`+(troco?` · troco ${R(troco)}`:''));
   if(t.restante<-0.009)toast(`💚 Sobrou ${R(-t.restante)} — escolha troco ou caixinha`,'amb');
   else if(t.restante<=0.009){toast('🎉 Conta recebida! Agora é só fechar a mesa.');UI.fmode='tudo'}
   refresh();render();
@@ -825,7 +838,7 @@ function salvarRepasse(nome){
 }
 
 /* ============ senhas dos sócios e registro de ações ============ */
-const PROT=[['semEstoque','Vender produto sem estoque'],['socios','Registrar retirada/aporte de sócio'],['cancelar','Cancelar mesa ou comanda que já tem itens'],['remover','Tirar item lançado há mais de 3 minutos'],['desconto','Fechar conta faltando dinheiro (desconto)'],['desfazerPag','Desfazer pagamento já recebido'],['servico','Tirar a taxa de serviço da conta'],['excluirVenda','Excluir venda já fechada'],['ajuste','Ajustar estoque (perda, consumo, contagem)'],['excluir','Excluir compra, gasto, item, produto ou custo fixo'],['zerar','Zerar dados, carregar exemplo ou restaurar backup'],['config','Mexer em sócios, senhas e configurações']];
+const PROT=[['semEstoque','Vender produto sem estoque'],['fiadoLimite','Passar do limite de fiado do cliente'],['socios','Registrar retirada/aporte de sócio'],['cancelar','Cancelar mesa ou comanda que já tem itens'],['remover','Tirar item lançado há mais de 3 minutos'],['desconto','Fechar conta faltando dinheiro (desconto)'],['desfazerPag','Desfazer pagamento já recebido'],['servico','Tirar a taxa de serviço da conta'],['excluirVenda','Excluir venda já fechada'],['ajuste','Ajustar estoque (perda, consumo, contagem)'],['excluir','Excluir compra, gasto, item, produto ou custo fixo'],['zerar','Zerar dados, carregar exemplo ou restaurar backup'],['config','Mexer em sócios, senhas e configurações']];
 const PROT_LBL=Object.fromEntries(PROT);
 function hashS(t){let h1=0xdeadbeef^7,h2=0x41c6ce57^7;const str='bdb|'+t;for(let i=0;i<str.length;i++){const ch=str.charCodeAt(i);h1=Math.imul(h1^ch,2654435761);h2=Math.imul(h2^ch,1597334677)}h1=Math.imul(h1^(h1>>>16),2246822507)^Math.imul(h2^(h2>>>13),3266489909);h2=Math.imul(h2^(h2>>>16),2246822507)^Math.imul(h1^(h1>>>13),3266489909);return(4294967296*(2097151&h2)+(h1>>>0)).toString(36)}
 function resumoMsg(m){m=m.split('\n')[0];const q=m.match(/^[^?]*\?/);m=q?q[0]:m;if(m.length>160)m=m.slice(0,m.lastIndexOf(' ',157))+'…';return m}
@@ -868,7 +881,7 @@ function refresh(){
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&UI.modals.length)popModal()});
 
 /* ============ navegação ============ */
-const TABS=[['painel','🏠','Painel'],['comandas','🍻','Comandas'],['pedidos','📲','Pedidos'],['estoque','📦','Estoque'],['compras','🛒','Compras'],['despesas','⛽','Despesas e custos'],['notas','📸','Ler nota'],['cardapio','📋','Cardápio'],['relatorios','📊','Relatórios'],['busca','🔎','Histórico e busca'],['socios','🤝','Sócios'],['config','⚙️','Configurações']];
+const TABS=[['painel','🏠','Painel'],['comandas','🍻','Comandas'],['pedidos','📲','Pedidos'],['fiado','📒','Fiado'],['estoque','📦','Estoque'],['compras','🛒','Compras'],['despesas','⛽','Despesas e custos'],['notas','📸','Ler nota'],['cardapio','📋','Cardápio'],['relatorios','📊','Relatórios'],['busca','🔎','Histórico e busca'],['socios','🤝','Sócios'],['config','⚙️','Configurações']];
 function go(t){if(!pode(t)){toast('🔒 Só os sócios acessam essa tela','amb');return}UI.tab=t;if(t!=='comandas')UI.comandaId=null;render();window.scrollTo({top:0})}
 function render(){
   const claro=S.config.tema==='claro';
@@ -877,7 +890,7 @@ function render(){
    +(()=>{const u=usuarioAtual();return u?`<button class="me" onclick="mConta()">${avatar(u)}<span><b>${esc(u.nome)}</b><small>${papelTxt(u)} · minha conta</small></span></button><button class="nb" onclick="sair()"><span>🚪</span>Sair</button>`:''})()
    +`<div class="side-foot">${NV.ativo?'☁️ Dados na nuvem, iguais em todos os aparelhos.':'Dados salvos neste computador.<br>Faça backup em ⚙️ Configurações.'}</div>`;
   if(!pode(UI.tab))UI.tab='painel';
-  const v={painel:vPainel,comandas:vComandas,pedidos:vPedidos,estoque:vEstoque,compras:vCompras,despesas:vDespesas,cardapio:vCardapio,relatorios:vRelatorios,busca:vBusca,notas:vNotas,socios:vSocios,config:vConfig}[UI.tab];
+  const v={painel:vPainel,comandas:vComandas,pedidos:vPedidos,fiado:vFiado,estoque:vEstoque,compras:vCompras,despesas:vDespesas,cardapio:vCardapio,relatorios:vRelatorios,busca:vBusca,notas:vNotas,socios:vSocios,config:vConfig}[UI.tab];
   $('#main').innerHTML=`<div class="view">${v()}</div>`;
   document.title=S.config.nome;
 }
@@ -1100,9 +1113,9 @@ function vPainel(){
   const hr=new Date().getHours();const sd=hr<12?'Bom dia':hr<18?'Boa tarde':'Boa noite';
   const bk=S.config.ultimoBackup,dias=bk?Math.floor((Date.now()-bk)/864e5):null;
   return`${S.exemplo?`<div class="banner">🧪 <span style="flex:1">Você está vendo <b>dados de exemplo</b> para testar. Quando forem começar de verdade, vá em ⚙️ Configurações → <b>Começar do zero mas manter itens e cardápio</b>. Este aviso some sozinho.</span><button class="btn s" onclick="go('config')">Ir para configurações</button></div>`:''}
-  ${!S.exemplo&&(dias===null||dias>=7)&&S.vendas.length+S.compras.length>0?`<div class="banner amb">💾 <span style="flex:1">${dias===null?'Você ainda não fez nenhum backup.':`Seu último backup foi há ${dias} dias.`} Os dados ficam só neste computador.</span><button class="btn s" onclick="exportar()">Fazer backup agora</button></div>`:''}
+  ${!S.exemplo&&!NV.ativo&&(dias===null||dias>=7)&&S.vendas.length+S.compras.length>0?`<div class="banner amb">💾 <span style="flex:1">${dias===null?'Você ainda não fez nenhum backup.':`Seu último backup foi há ${dias} dias.`} Os dados ficam só neste computador.</span><button class="btn s" onclick="exportar()">Fazer backup agora</button></div>`:''}
   ${!S.exemplo&&!S.socios.length?`<div class="banner amb">🔓 <span style="flex:1">Cadastre a senha dos sócios para impedir que alguém cancele mesa, dê desconto ou apague vendas sem autorização.</span><button class="btn s" onclick="go('config')">Cadastrar sócios</button></div>`:''}
-  <div class="top"><div class="row" style="gap:16px">${S.config.logo?`<img class="hlogo" src="${S.config.logo}" alt="">`:''}<div><h1>${sd}! 👋</h1><div class="sub">${new Date().toLocaleDateString('pt-BR',{weekday:'long',day:'numeric',month:'long'})} · ${esc(S.config.nome)}</div></div></div></div>
+  <div class="top"><div class="row" style="gap:16px">${S.config.logo?`<img class="hlogo" src="${S.config.logo}" alt="">`:''}<div><h1>${sd}! 👋</h1><div class="sub">${new Date().toLocaleDateString('pt-BR',{weekday:'long',day:'numeric',month:'long'})} · ${esc(S.config.nome)}${totalFiado()>0.009?` · <a class="fd-lk" onclick="go('fiado')">📒 ${R(totalFiado())} a receber no fiado</a>`:''}</div></div></div></div>
   <div class="grid g4">
     <div class="card kpi"><span class="e">💰</span><small>Vendido hoje</small><b>${R(fat)}</b><i>${vh.length} conta(s) fechada(s)</i></div>
     <div class="card kpi"><span class="e">🍻</span><small>Comandas abertas</small><b>${S.abertas.length}</b><i>${R(aberto)} em consumo</i></div>
@@ -1621,7 +1634,7 @@ function vRelatorios(){
     ${top.slice(0,15).map(([n,x])=>{const mg=x.rec?(x.rec-x.cus)/x.rec:0;return`<tr><td>${esc(n)}</td><td class="r">${N(x.q)}</td><td class="r">${R(x.rec)}</td><td class="r">${R(x.cus)}</td><td class="r"><b>${R(x.rec-x.cus)}</b></td><td class="r"><span class="chip ${mg>=.6?'ok':mg>=.35?'amb':'bad'}">${P(mg)}</span></td></tr>`}).join('')||'<tr><td colspan="6" class="empty">Sem vendas no mês</td></tr>'}</table></div></div>
    <div class="grid"><div class="card"><h3>🎁 Caixinhas</h3>${(()=>{const sd=saldoCaixinhas();const mesK={};r.vendas.forEach(v=>(v.caixinhas||[]).forEach(k=>mesK[k.nome]=(mesK[k.nome]||0)+k.valor));
      const ks=Object.keys(sd);return ks.length?ks.map(n=>{const x=sd[n];return`<div class="lc"><div><b>${esc(n)}</b><small>no período: ${R(mesK[n]||0)} · repassado no total: ${R(x.saiu)}</small></div><div class="r"><b class="amb">${R(x.entrou-x.saiu)}</b><br><button class="btn s" style="margin-top:4px" onclick="mRepasse('${esc(n).replace(/'/g,'')}')">Repassar</button></div></div>`}).join('')+'<p class="help">O valor em destaque é o que está guardado agora. Não entra no lucro do bar.</p>':'<div class="empty">—</div>'})()}</div>
-   <div class="card"><h3>💳 Formas de pagamento</h3>${Object.entries(formas).sort((x,y)=>y[1]-x[1]).map(([f,v])=>`<div class="brow"><div class="row"><span>${FORMAS.find(x=>x[0]===f)?.[1]||''} ${esc(f)}</span><b>${R(v)}</b></div><div class="bar"><i style="width:${v/fmx*100}%"></i></div></div>`).join('')||'<div class="empty">—</div>'}</div></div>
+   <div class="card"><h3>💳 Formas de pagamento</h3>${Object.entries(formas).sort((x,y)=>y[1]-x[1]).map(([f,v])=>`<div class="brow"><div class="row"><span>${FORMAS.find(x=>x[0]===f)?.[1]||''} ${esc(f)}</span><b>${R(v)}</b></div><div class="bar"><i style="width:${v/fmx*100}%"></i></div></div>`).join('')||'<div class="empty">—</div>'}${(()=>{const fr=sum((S.fiadoPg||[]).filter(x=>x.data>=de&&x.data<=ate),x=>x.valor),ft=totalFiado();return fr>0.009||ft>0.009?`<p class="help" style="margin-top:10px">💵 Fiado recebido no período: <b>${R(fr)}</b><br>📒 Ainda a receber hoje: <b>${R(ft)}</b> <a class="fd-lk" onclick="go('fiado')">ver caderninho</a></p>`:''})()}</div></div>
   </div>
   <div class="card" style="margin-top:14px"><h3>📍 Compras por lugar — vale a pena a viagem?</h3><div class="tw"><table><tr><th>Lugar</th><th class="r">Idas</th><th class="r">Mercadorias</th><th class="r">Deslocamento</th><th class="r">Km</th><th class="r">Desl. / compras</th></tr>
    ${Object.entries(locais).sort((x,y)=>y[1].v-x[1].v).map(([l,x])=>`<tr><td>${esc(l)}</td><td class="r">${x.n}</td><td class="r">${R(x.v)}</td><td class="r">${R(x.d)}</td><td class="r">${x.km?N(x.km):'—'}</td><td class="r"><span class="chip ${x.d/(x.v||1)>.08?'bad':x.d/(x.v||1)>.03?'amb':'ok'}">${P(x.d/(x.v||1))}</span></td></tr>`).join('')||'<tr><td colspan="6" class="empty">Sem compras no mês</td></tr>'}</table></div>
@@ -1735,6 +1748,7 @@ async function zerar(manter){
 }
 
 function normalizar(d){const b=blank();const o=Object.assign(b,d);o.config=Object.assign(blank().config,d.config||{});if(!o.config.cxV){o.config.cxV=1;const pad=JSON.stringify(['Caixinha do garçom','Caixinha de Natal']);if(JSON.stringify(o.config.caixinhas||[])===pad&&!(o.vendas||[]).some(v=>(v.caixinhas||[]).length)&&!(o.repasses||[]).length)o.config.caixinhas=[]}
+  if(!o.config.fiadoV){o.config.fiadoV=1;if(!(o.config.protegidas||[]).includes('fiadoLimite'))o.config.protegidas=[...(o.config.protegidas||[]),'fiadoLimite']}
   if(!o.config.semEstoqueV){o.config.semEstoqueV=1;if(!(o.config.protegidas||[]).includes('semEstoque'))o.config.protegidas=[...(o.config.protegidas||[]),'semEstoque']}o.socios=d.socios||[];o.log=d.log||[];o.repasses=d.repasses||[];o.notas=d.notas||[];o.mapaNotas=d.mapaNotas||{};o.socMovs=d.socMovs||[];return o}
 function aplicarTema(){document.documentElement.dataset.theme=S.config.tema==='claro'?'light':'dark';
   document.querySelectorAll('#temaTg button').forEach(b=>b.classList.toggle('on',b.dataset.t===(S.config.tema==='claro'?'claro':'escuro')));
@@ -1748,7 +1762,7 @@ const LOGO_BATISTA="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAALoAAAC6CAYAAA
 /* ==================================================================
    LOGIN, USUÁRIOS, PERFIS E SESSÃO
    ================================================================== */
-const PERM_FUNC=['painel','comandas','pedidos','estoque','compras','despesas','notas'];
+const PERM_FUNC=['painel','comandas','pedidos','fiado','estoque','compras','despesas','notas'];
 const ehSocio=u=>!!u&&u.papel!=='funcionario';
 const ehAdmin=u=>!!u&&u.papel==='admin';
 const socios=()=>S.socios.filter(u=>ehSocio(u)&&!ehAdmin(u));
@@ -1830,7 +1844,7 @@ function entrar(){
   UI.erros=0;UI.loginAdm=false;UI.user=u.id;u.ultimoAcesso=Date.now();registrar('acesso','Entrou no sistema',u.nome);save();gravarSessao();ultimoUso=Date.now();
   abrirApp(true);
 }
-function abrirApp(boasVindas){
+function abrirApp(boasVindas){setTimeout(()=>{try{devPing()}catch(e){}},800);
   document.body.classList.remove('sem-sessao');$('#login').style.display='none';$('#login').innerHTML='';
   if(!pode(UI.tab))UI.tab='painel';render();
   if(boasVindas){const u=usuarioAtual();const w=document.createElement('div');w.className='welcome';
@@ -1857,7 +1871,7 @@ function criarPrimeiros(){
   registrar('config','Primeiro acesso: cadastrou '+ok.map(x=>x.nome.trim()).join(', '),ok[0].nome.trim());
   UI.pa=null;UI.user=S.socios[S.socios.length-ok.length].id;save();gravarSessao();abrirApp(true);
 }
-function iniciarSessao(){
+function iniciarSessao(){setTimeout(()=>{try{devPing()}catch(e){}},1500);
   S.socios.forEach(u=>{if(!u.papel)u.papel='socio'});
   const s=lerSessao();const min=+S.config.bloqueioMin||0;
   if(s&&S.socios.some(u=>u.id===s.id)&&(!min||Date.now()-s.ts<min*60000)){UI.user=s.id;abrirApp(false)}else mostrarLogin();
@@ -2457,7 +2471,7 @@ function finalizarSil(c){const t=calc(c);S.vendas.push({id:uid(),data:hoje(),ts:
 /* ============ nuvem (Firebase): sincroniza entre os aparelhos ============ */
 const FB_CFG={apiKey:"AIzaSyDPsrQFNlOxUO98Sy4Z7TEH3YIIyGOUVbo",authDomain:"bar-do-batista-f58ca.firebaseapp.com",projectId:"bar-do-batista-f58ca",storageBucket:"bar-do-batista-f58ca.firebasestorage.app",messagingSenderId:"476560991593",appId:"1:476560991593:web:bc99bde8ddb1240dfd49f8"};
 const FB_URL='https://www.gstatic.com/firebasejs/10.12.2/';
-const NV_COLS=['socios','log','repasses','notas','socMovs','itens','cardapio','compras','despesas','fixos','movs','abertas','vendas'];
+const NV_COLS=['socios','log','repasses','notas','socMovs','itens','cardapio','compras','despesas','fixos','movs','abertas','vendas','clientes','fiadoPg'];
 const NV_K={con:'bdb_nv_con',wm:'bdb_nv_wm',out:'bdb_nv_out'};
 const NV={ativo:false,db:null,auth:null,user:null,sombra:{},sombraMeta:null,unsubs:[],seq:0,ultOrd:0,flushT:null,renderT:null,pendRender:false,flushing:false,pendServer:false,carregando:false,sdk:false,conectado:false};
 function lsGet(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}}
@@ -2506,7 +2520,7 @@ function nvErro(e){console.warn('nuvem',e);NV.erro=e&&(e.code||e.message)||'erro
   if(e&&e.code==='permission-denied'){toast('⚠️ A nuvem recusou o acesso. Confira as Regras do Firestore.','bad')}nvStatus()}
 /* ouvir mudanças feitas nos outros aparelhos */
 function nvOuvir(){
-  try{ouvirPedidos();publicarCardapio()}catch(e){console.warn(e)}
+  try{ouvirPedidos();publicarCardapio();devOuvir()}catch(e){console.warn(e)}
   NV.unsubs.forEach(u=>{try{u()}catch(e){}});NV.unsubs=[];
   const base=nvBase(),wm=lsGet(NV_K.wm,{}),prontos=[];
   for(const k of NV_COLS){
@@ -2662,10 +2676,68 @@ async function nvIniciar(){
 }
 async function nvDesconectar(){
   if(!await ask('Desconectar este aparelho da nuvem?\n\nOs dados continuam na nuvem e nos outros aparelhos. Para usar aqui de novo, será preciso o e-mail e a senha do bar.',{ok:'Desconectar',danger:true}))return;
-  registrar('config','Desconectou um aparelho da nuvem',nomeAtual());save();await nvFlush();
+  registrar('config','Desconectou um aparelho da nuvem',nomeAtual());save();await nvFlush();try{await devRef().delete()}catch(e){}
   lsSet(NV_K.con,null);lsSet(NV_K.wm,{});NV.ativo=false;UI.user=null;UI.modals=[];refresh();gravarSessao();
   try{await NV.auth.signOut()}catch(e){nvTelaEntrar()}
 }
+
+/* ---------- aparelhos conectados ---------- */
+function devId(){let id=lsGet('bdb_dev',null);if(!id){id='d'+uid()+Date.now().toString(36);lsSet('bdb_dev',id)}return id}
+function devTipo(){const u=navigator.userAgent;const cel=/Android|iPhone|iPad|Mobile/i.test(u);
+  const so=/iPhone|iPad/.test(u)?'iPhone':/Android/.test(u)?'Android':/Windows/.test(u)?'Windows':/Mac OS/.test(u)?'Mac':/Linux/.test(u)?'Linux':'';
+  const nav=/Edg\//.test(u)?'Edge':/OPR\//.test(u)?'Opera':/SamsungBrowser/.test(u)?'Samsung Internet':/Chrome\//.test(u)?'Chrome':/Firefox\//.test(u)?'Firefox':/Safari\//.test(u)?'Safari':'navegador';
+  return{cel,desc:(cel?'Celular':'Computador')+(so?' '+so:'')+' · '+nav}}
+const devNome=()=>lsGet('bdb_dev_nome','')||devTipo().desc;
+NV.aparelhos={};
+function devRef(id){return nvBase().collection('aparelhos').doc(id||devId())}
+function devPing(){
+  if(!NV.db||!NV.user||!NV.conectado||NV.carregando)return;
+  const t=devTipo();
+  devRef().set({nome:devNome(),desc:t.desc,cel:t.cel,usuario:UI.user?nomeAtual():'',visto:firebase.firestore.FieldValue.serverTimestamp(),sair:false,desde:lsGet('bdb_dev_desde',0)||(lsSet('bdb_dev_desde',Date.now()),Date.now())},{merge:true}).catch(e=>console.warn('aparelho',e));
+}
+function devOuvir(){
+  if(NV.unDev){try{NV.unDev()}catch(e){}}NV.aparelhos={};
+  NV.unDev=nvBase().collection('aparelhos').where('visto','>',firebase.firestore.Timestamp.fromMillis(1)).onSnapshot(snap=>{
+    snap.docChanges().forEach(ch=>{if(ch.type==='removed')delete NV.aparelhos[ch.doc.id];else NV.aparelhos[ch.doc.id]=Object.assign({id:ch.doc.id},ch.doc.data({serverTimestamps:'estimate'}))});
+    const eu=NV.aparelhos[devId()];
+    if(eu&&eu.sair){devExpulso();return}
+    if(UI.user&&UI.tab==='config'){clearTimeout(NV.renderT);NV.renderT=setTimeout(nvRedesenhar,250)}
+  },e=>console.warn('aparelhos',e));
+  devPing();
+}
+setInterval(()=>{if(document.visibilityState==='visible')devPing()},120000);
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')devPing()});
+async function devExpulso(){
+  if(NV.saindo)return;NV.saindo=true;
+  try{await nvFlush()}catch(e){}
+  try{await devRef().delete()}catch(e){}
+  lsSet(NV_K.con,null);lsSet(NV_K.wm,{});lsSet(NV_K.out,{});NV.ativo=false;UI.user=null;UI.modals=[];refresh();try{gravarSessao()}catch(e){}
+  try{await NV.auth.signOut()}catch(e){nvTelaEntrar()}
+  setTimeout(()=>{const er=$('#lgErr');if(er)er.textContent='Este aparelho foi desconectado por um sócio. Para usar de novo, entre com o e-mail e a senha do bar.'},300);
+  NV.saindo=false;
+}
+async function devRenomear(){
+  const n=await ask('Nome deste aparelho (para reconhecer na lista):',{input:devNome(),ok:'Salvar'});
+  if(n===null)return;lsSet('bdb_dev_nome',n.trim().slice(0,40));devPing();render();
+}
+async function devDesconectar(id){
+  const a=NV.aparelhos[id];if(!a)return;
+  const q=await autoriza('config',`Desconectar "${a.nome}"?\n\nEle sai da nuvem na hora (ou assim que for aberto de novo) e só volta com o e-mail e a senha do bar.`,'Desconectar');if(!q)return;
+  try{await devRef(id).set({sair:true},{merge:true});registrar('config',`Desconectou o aparelho "${a.nome}" à distância`,q);save();toast('🔌 Aparelho desconectado')}
+  catch(e){nvErro(e);toast('⚠️ Sem internet para desconectar agora','bad')}
+}
+async function devRemover(id){const a=NV.aparelhos[id];if(!a)return;if(!await ask(`Tirar "${a.nome}" da lista?\n\nUse para aparelhos antigos que não são mais usados. Se ele abrir o sistema de novo, volta para a lista.`,{ok:'Tirar da lista'}))return;try{await devRef(id).delete()}catch(e){nvErro(e)}}
+function devLista(){
+  const L=Object.values(NV.aparelhos||{}).sort((a,b)=>(b.id===devId())-(a.id===devId())||((b.visto?.toMillis?.()||0)-(a.visto?.toMillis?.()||0)));
+  if(!NV.user)return'';
+  const soc=ehSocio(usuarioAtual());
+  return`<div class="dev-l"><div class="dev-h">📱 Aparelhos conectados <span class="mut">(${L.length})</span></div>${L.map(a=>{
+    const t=a.visto&&a.visto.toMillis?a.visto.toMillis():0,on=Date.now()-t<5*60e3,eu=a.id===devId();
+    return`<div class="dev ${on?'on':''}"><span class="dev-i">${a.cel?'📱':'💻'}</span><div style="flex:1;min-width:0"><b>${esc(a.nome||a.desc||'Aparelho')}</b>${eu?' <span class="chip ok">este aparelho</span>':''}${a.sair?' <span class="chip amb">desconectando…</span>':''}
+      <div class="mut" style="font-size:12.5px">${on?'🟢 usando agora':'⚪ visto '+(t?(Date.now()-t>864e5?'há '+Math.floor((Date.now()-t)/864e5)+' dia(s)':'há '+tempo(t)):'—')}${a.usuario?' · '+esc(a.usuario):''}${a.nome&&a.desc&&a.nome!==a.desc?' · '+esc(a.desc):''}</div></div>
+      ${eu?`<button class="btn s" onclick="devRenomear()">✏️ Renomear</button>`:soc?(a.sair?`<button class="btn s" onclick="devRemover('${a.id}')">Tirar da lista</button>`:`<button class="btn s" onclick="devDesconectar('${a.id}')">🔌 Desconectar</button>`):''}</div>`}).join('')||'<div class="mut">Carregando…</div>'}</div>`;
+}
+
 function nvCard(){
   const pend=Object.keys(lsGet(NV_K.out,{})).length;
   return`<div class="card" style="margin-bottom:14px"><h3>☁️ Nuvem</h3>
@@ -2677,7 +2749,148 @@ function nvCard(){
     <button class="btn s" onclick="nvAgendar();toast('Enviando…')">🔄 Sincronizar agora</button>
     ${ehSocio(usuarioAtual())?`<button class="btn s" onclick="nvDesconectar()">Desconectar este aparelho</button>`:''}
    </div>
+   ${devLista()}
    <p class="help" style="margin:10px 0 0">📸 As fotos das notas ficam guardadas só no aparelho onde foram lidas. Os valores lançados vão para todos.</p></div>`;
+}
+
+/* ============ caderninho do fiado ============ */
+const cliById=id=>(S.clientes||[]).find(c=>c.id===id);
+function fiadoLanc(cid){ // tudo que o cliente pendurou (vendas fechadas e mesas abertas)
+  const L=[];
+  S.vendas.forEach(v=>(v.pagamentos||[]).forEach(p=>{if(p.forma==='Fiado'&&p.clienteId===cid)L.push({tipo:'fiado',id:p.id,valor:p.valor,data:v.data,ts:p.ts||v.ts,label:v.label,itens:v.itens,vendaId:v.id})}));
+  S.abertas.forEach(c=>(c.pagamentos||[]).forEach(p=>{if(p.forma==='Fiado'&&p.clienteId===cid)L.push({tipo:'fiado',id:p.id,valor:p.valor,data:iso(p.ts),ts:p.ts,label:labelC(c)+' (aberta)',itens:c.itens,aberta:true})}));
+  return L;
+}
+const fiadoPagos=cid=>(S.fiadoPg||[]).filter(p=>p.clienteId===cid);
+function saldoCli(cid){return r2(sum(fiadoLanc(cid),x=>x.valor)-sum(fiadoPagos(cid),x=>x.valor))}
+function desdeCli(cid){ // data do fiado mais antigo ainda não pago (pagamentos abatem os mais antigos primeiro)
+  let pago=sum(fiadoPagos(cid),x=>x.valor);
+  for(const f of fiadoLanc(cid).sort((a,b)=>a.ts-b.ts)){if(pago>=f.valor-0.009){pago-=f.valor;continue}return f.ts}
+  return null;
+}
+function fiadoSemNome(){let t=0;S.vendas.forEach(v=>(v.pagamentos||[]).forEach(p=>{if(p.forma==='Fiado'&&!p.clienteId)t+=p.valor}));return r2(t)}
+const totalFiado=()=>r2(sum(S.clientes||[],c=>Math.max(0,saldoCli(c.id))));
+const diasDesde=ts=>Math.floor((Date.now()-ts)/864e5);
+function foneWa(f){const d=String(f||'').replace(/\D/g,'').replace(/^55(?=\d{10,11}$)/,'');return d.length>=10?'55'+d:''}
+
+/* escolher cliente na hora de pagar no fiado */
+function fiadoPicker(p,cm){
+  if(!p.clienteId&&!p.novoCli&&!p._pre){p._pre=1;const ps=cm&&p.pessoaId&&cm.pessoas.find(x=>x.id===p.pessoaId);const nm=ps?ps.nome:(cm&&cm.nome&&!/^🛵|^🛍️/.test(cm.nome)?cm.nome:'');
+    if(nm){const ex=(S.clientes||[]).find(x=>semAc(x.nome).toLowerCase()===semAc(nm).toLowerCase());if(ex)p.clienteId=ex.id;else if(ps){p.novoCli=true;p.novoNome=nm}}}
+  const cs=(S.clientes||[]).slice().sort((a,b)=>a.nome.localeCompare(b.nome,'pt-BR'));
+  const sel=p.clienteId?cliById(p.clienteId):null;
+  const sd=sel?saldoCli(sel.id):0;
+  return`<div class="fd-pick">
+   <label class="f">Quem vai pendurar?<select onchange="UI.pay.valor=num($('#payValor').value);UI.pay.clienteId=this.value==='+'?null:this.value;UI.pay.novoCli=this.value==='+';refresh()">
+     <option value="">— escolha o cliente —</option>${cs.map(c=>`<option value="${c.id}" ${p.clienteId===c.id?'selected':''}>${esc(c.nome)}${saldoCli(c.id)>0.009?' · deve '+R(saldoCli(c.id)):''}</option>`).join('')}
+     <option value="+" ${p.novoCli?'selected':''}>➕ Cliente novo…</option></select></label>
+   ${p.novoCli?`<div class="row" style="gap:10px"><label class="f" style="flex:1.3">Nome<input id="fdNome" value="${esc(p.novoNome||'')}" oninput="UI.pay.novoNome=this.value" placeholder="Nome e apelido"></label><label class="f" style="flex:1">WhatsApp<input id="fdFone" type="tel" value="${esc(p.novoFone||'')}" oninput="UI.pay.novoFone=this.value" placeholder="(31) 9…"></label></div>`:''}
+   ${sel?`<p class="help" style="margin:2px 0 0">${sd>0.009?`📒 Já deve <b>${R(sd)}</b>${desdeCli(sel.id)?' desde '+fdata(iso(desdeCli(sel.id))):''}.`:'✅ Não deve nada.'}${+sel.limite>0?` Limite: ${R(+sel.limite)}.`:''}</p>`:''}
+  </div>`;
+}
+async function confirmarFiado(p,valor){ // devolve {clienteId,nome} ou null
+  let c=p.clienteId?cliById(p.clienteId):null;
+  if(!c&&p.novoCli){
+    const nome=String(p.novoNome||'').trim();if(nome.length<2){toast('Escreva o nome do cliente','bad');return null}
+    const ex=(S.clientes||[]).find(x=>semAc(x.nome).toLowerCase()===semAc(nome).toLowerCase());
+    if(ex)c=ex;else{c={id:uid(),nome:nome.slice(0,60),fone:String(p.novoFone||'').trim().slice(0,30),limite:0,criado:Date.now()};(S.clientes||(S.clientes=[])).push(c)}
+  }
+  if(!c){toast('Escolha quem vai pendurar a conta','bad');return null}
+  const sd=saldoCli(c.id);
+  if(+c.limite>0&&sd+valor>+c.limite+0.009){
+    const q=await autoriza('fiadoLimite',`${c.nome} já deve ${R(sd)} e o limite é ${R(+c.limite)}.\nCom mais ${R(valor)} vai ficar devendo ${R(sd+valor)}.\n\nLiberar mesmo assim?`,'Liberar');
+    if(!q)return null;registrar('fiadoLimite',`${c.nome}: passou do limite (${R(sd+valor)} de ${R(+c.limite)})`,q);
+  }
+  return c;
+}
+
+/* aba do fiado */
+function vFiado(){
+  UI.fd=UI.fd||{q:'',quit:false};const f=UI.fd;
+  const cs=(S.clientes||[]).map(c=>({c,s:saldoCli(c.id),d:desdeCli(c.id)}));
+  const dev=cs.filter(x=>x.s>0.009).sort((a,b)=>b.s-a.s);
+  const quit=cs.filter(x=>x.s<=0.009).sort((a,b)=>a.c.nome.localeCompare(b.c.nome,'pt-BR'));
+  const q=semAc(f.q).toLowerCase();const filt=x=>!q||semAc(x.c.nome+' '+(x.c.fone||'')).toLowerCase().includes(q);
+  const mes=mesAtual(),recMes=sum((S.fiadoPg||[]).filter(p=>p.data.startsWith(mes)),p=>p.valor);
+  const tot=sum(dev,x=>x.s),velho=dev.filter(x=>x.d&&diasDesde(x.d)>=30).length,semNome=fiadoSemNome();
+  const linha=x=>{const c=x.c,dd=x.d?diasDesde(x.d):0;
+    return`<div class="fd-row ${x.s>0.009&&dd>=30?'velho':''}"><div class="fd-av">${esc((c.nome||'?')[0].toUpperCase())}</div>
+     <div style="flex:1;min-width:0;cursor:pointer" onclick="UI.fdCli='${c.id}';pushModal(mCliente,true)"><b>${esc(c.nome)}</b>
+      <div class="mut" style="font-size:13px">${c.fone?'📞 '+esc(c.fone):'sem WhatsApp'}${x.s>0.009&&x.d?` · desde ${fdata(iso(x.d))} (${dd===0?'hoje':dd===1?'ontem':'há '+dd+' dias'})`:''}${+c.limite>0?' · limite '+R(+c.limite):''}</div></div>
+     <div class="fd-v ${x.s>0.009?'':'ok'}">${x.s>0.009?R(x.s):x.s<-0.009?'crédito '+R(-x.s):'quitado'}</div>
+     <div class="row" style="gap:6px">${x.s>0.009?`<button class="btn s" onclick="cobrarFiado('${c.id}')" title="Mandar lembrete no WhatsApp">💬 Cobrar</button><button class="btn p s" onclick="UI.fdCli='${c.id}';pushModal(mReceberFiado)">Receber</button>`:''}</div></div>`};
+  return`<div class="top"><div><h1>📒 Fiado</h1><div class="sub">Quem pendurou, quanto deve e desde quando</div></div><button class="btn" onclick="UI.fdCli=null;pushModal(mCliente,true)">➕ Cliente</button></div>
+  <div class="grid g3" style="margin-bottom:16px">
+   <div class="card kpi"><span class="e">📒</span><small>A receber</small><b class="${tot>0?'amb':''}">${R(tot)}</b><i>${dev.length} cliente(s) devendo</i></div>
+   <div class="card kpi"><span class="e">⏰</span><small>Há mais de 30 dias</small><b ${velho?'style="color:#ff8a8a"':''}>${velho}</b><i>cliente(s) com fiado antigo</i></div>
+   <div class="card kpi"><span class="e">💵</span><small>Recebido no mês</small><b>${R(recMes)}</b><i>pagamentos de fiado</i></div>
+  </div>
+  ${semNome>0.009?`<div class="banner">📝 <span style="flex:1">Tem <b>${R(semNome)}</b> em fiados antigos registrados antes do caderninho, sem nome de cliente. Eles continuam nos relatórios, mas não aparecem aqui.</span></div>`:''}
+  <div class="card"><input class="fd-busca" placeholder="🔎 Buscar cliente por nome ou telefone…" value="${esc(f.q)}" oninput="UI.fd.q=this.value;clearTimeout(UI.fdT);UI.fdT=setTimeout(()=>{render();const i=$('.fd-busca');if(i){i.focus();i.setSelectionRange(i.value.length,i.value.length)}},250)">
+   ${dev.filter(filt).map(linha).join('')||`<div class="empty"><b>🎉</b>${q?'Ninguém devendo com esse nome.':'Ninguém devendo. Caderninho em dia!'}</div>`}
+   ${quit.length?`<button class="btn s" style="margin-top:12px" onclick="UI.fd.quit=!UI.fd.quit;render()">${f.quit?'▲ Esconder':'▼ Mostrar'} clientes sem dívida (${quit.length})</button>${f.quit?quit.filter(filt).map(linha).join(''):''}`:''}
+  </div>`;
+}
+function mCliente(){
+  const c=UI.fdCli?cliById(UI.fdCli):null;
+  if(!c)return`<div class="mh"><h2>➕ Novo cliente</h2><button class="x" onclick="popModal()">✕</button></div>
+   <label class="f">Nome<input id="clN" placeholder="Nome e apelido"></label><label class="f">WhatsApp<input id="clF" type="tel" placeholder="(31) 9…"></label>
+   <label class="f">Limite de fiado (R$) <small class="mut">0 = sem limite</small><input id="clL" type="number" min="0" step="10" value="0" ${ehSocio(usuarioAtual())?'':'disabled'}></label>
+   <div class="mf"><button class="btn" onclick="popModal()">Cancelar</button><button class="btn p" onclick="salvarCliente()">Salvar</button></div>`;
+  const s=saldoCli(c.id);
+  const H=[...fiadoLanc(c.id).map(x=>({...x})),...fiadoPagos(c.id).map(p=>({tipo:'pg',...p}))].sort((a,b)=>b.ts-a.ts);
+  return`<div class="mh"><h2>📒 ${esc(c.nome)}</h2><button class="x" onclick="popModal()">✕</button></div>
+   <div class="fd-top"><div><small class="mut">${s>0.009?'Deve':'Situação'}</small><div class="fd-big ${s>0.009?'amb':'ok'}">${s>0.009?R(s):s<-0.009?'Crédito de '+R(-s):'Quitado ✅'}</div>${s>0.009&&desdeCli(c.id)?`<small class="mut">desde ${fdata(iso(desdeCli(c.id)))}</small>`:''}</div>
+    <div class="row" style="gap:8px">${s>0.009?`<button class="btn" onclick="cobrarFiado('${c.id}')">💬 Cobrar no WhatsApp</button><button class="btn p" onclick="pushModal(mReceberFiado)">💵 Receber</button>`:''}</div></div>
+   <div class="cfg2" style="margin:12px 0">
+    <label class="f">Nome<input id="clN" value="${esc(c.nome)}"></label><label class="f">WhatsApp<input id="clF" type="tel" value="${esc(c.fone||'')}"></label>
+    <label class="f">Limite de fiado (R$) <small class="mut">0 = sem limite</small><input id="clL" type="number" min="0" step="10" value="${+c.limite||0}" ${ehSocio(usuarioAtual())?'':'disabled title="Só sócio muda o limite"'}></label>
+    <label class="f">Observação<input id="clO" value="${esc(c.obs||'')}" placeholder="Ex.: paga todo dia 5"></label>
+   </div>
+   <h3 style="margin:6px 0 8px">Histórico</h3>
+   <div class="fd-hist">${H.map(x=>x.tipo==='pg'
+     ?`<div class="fd-h pg"><span>💵</span><div style="flex:1"><b>Pagou ${R(x.valor)}</b> no ${esc(x.forma)}<div class="mut" style="font-size:12.5px">${fdata(x.data)} · recebido por ${esc(x.por||'—')}${x.obs?' · '+esc(x.obs):''}</div></div><span class="ok">− ${R(x.valor)}</span></div>`
+     :`<div class="fd-h"><span>📒</span><div style="flex:1"><b>Pendurou ${R(x.valor)}</b> · ${esc(x.label||'')}<div class="mut" style="font-size:12.5px">${fdata(x.data)} · ${esc((x.itens||[]).slice(0,6).map(i=>i.qtd+'× '+i.nome).join(', '))}${(x.itens||[]).length>6?'…':''}</div></div><span class="amb">+ ${R(x.valor)}</span></div>`).join('')||'<div class="empty">Sem movimentos ainda.</div>'}</div>
+   <div class="mf"><button class="btn" onclick="popModal()">Fechar</button><button class="btn p" onclick="salvarCliente()">Salvar dados</button></div>`;
+}
+function salvarCliente(){
+  const nome=$('#clN').value.trim();if(nome.length<2){toast('Escreva o nome','bad');return}
+  let c=UI.fdCli?cliById(UI.fdCli):null;
+  const ex=(S.clientes||[]).find(x=>x!==c&&semAc(x.nome).toLowerCase()===semAc(nome).toLowerCase());if(ex){toast('Já existe um cliente com esse nome','bad');return}
+  if(!c){c={id:uid(),criado:Date.now(),limite:0};(S.clientes||(S.clientes=[])).push(c);UI.fdCli=c.id}
+  const lim=Math.max(0,+$('#clL').value||0);
+  if(ehSocio(usuarioAtual())&&lim!==(+c.limite||0)){registrar('fiadoLimite',`Limite de fiado de ${nome}: ${lim?R(lim):'sem limite'}`,nomeAtual());c.limite=lim}
+  c.nome=nome.slice(0,60);c.fone=$('#clF').value.trim().slice(0,30);if($('#clO'))c.obs=$('#clO').value.trim().slice(0,120);
+  save();popModal(true);render();toast('✅ Cliente salvo');
+}
+function mReceberFiado(){
+  const c=cliById(UI.fdCli);if(!c)return'';const s=saldoCli(c.id);
+  UI.fdPg=UI.fdPg&&UI.fdPg.cid===c.id?UI.fdPg:{cid:c.id,valor:s,forma:'Pix'};const p=UI.fdPg;
+  return`<div class="mh"><h2>💵 Receber de ${esc(c.nome)}</h2><button class="x" onclick="popModal()">✕</button></div>
+   <p class="mut" style="margin-top:0">Deve ${R(s)}. Pode receber tudo ou só uma parte.</p>
+   <label class="f">Valor recebido<input id="fpV" inputmode="decimal" value="${N(p.valor,2)}" oninput="UI.fdPg.valor=num(this.value)"></label>
+   <div class="chips" style="margin:-2px 0 12px"><button class="tg" onclick="UI.fdPg.valor=${s};refresh()">Tudo (${R(s)})</button>${s>20?`<button class="tg" onclick="UI.fdPg.valor=${r2(s/2)};refresh()">Metade</button>`:''}</div>
+   <div class="pf">${FORMAS.filter(f=>f[0]!=='Fiado').map(([f,e])=>`<button class="${p.forma===f?'on':''}" onclick="UI.fdPg.valor=num($('#fpV').value);UI.fdPg.forma='${f}';refresh()"><span>${e}</span>${f}</button>`).join('')}</div>
+   <label class="f">Observação<input id="fpO" placeholder="Opcional"></label>
+   <div class="mf"><button class="btn" onclick="popModal()">Cancelar</button><button class="btn p" onclick="receberFiado()">Confirmar recebimento</button></div>`;
+}
+function receberFiado(){
+  const c=cliById(UI.fdCli),p=UI.fdPg;const v=r2(num($('#fpV').value));
+  if(!(v>0)){toast('Informe o valor','bad');return}
+  const s=saldoCli(c.id);
+  (S.fiadoPg||(S.fiadoPg=[])).push({id:uid(),clienteId:c.id,valor:v,forma:p.forma,data:hoje(),ts:Date.now(),por:nomeAtual(),obs:$('#fpO').value.trim().slice(0,120)});
+  registrar('fiado',`Recebeu ${R(v)} (${p.forma}) do fiado de ${c.nome}`,nomeAtual());
+  UI.fdPg=null;save();popModal(true);render();
+  const ns=r2(s-v);toast(ns<=0.009?`🎉 ${esc(c.nome)} quitou o fiado!`:`💵 Recebido ${R(v)} · ainda deve ${R(ns)}`);
+  if(UI.modals.length)refresh();
+}
+function cobrarFiado(cid){
+  const c=cliById(cid);if(!c)return;const w=foneWa(c.fone);
+  if(!w){toast('Cadastre o WhatsApp do cliente primeiro','amb');UI.fdCli=cid;if(!UI.modals.length)pushModal(mCliente,true);return}
+  const s=saldoCli(cid),o=onl();
+  const msg=`Oi, ${c.nome.split(' ')[0]}! Tudo bem? 😊\nAqui é do ${S.config.nome}. Passando só pra lembrar do seu fiado com a gente: *${R(s)}*.\n${o.pix?`Se quiser acertar no Pix, a chave é: ${o.pix}\n`:''}Pode ser também aqui no bar, quando passar. Obrigado pela preferência! 🍻`;
+  registrar('fiado',`Mandou lembrete de fiado (${R(s)}) para ${c.nome}`,nomeAtual());save();
+  window.open('https://wa.me/'+w+'?text='+encodeURIComponent(msg),'_blank');
 }
 
 /* ============ pedidos online: delivery e QR code nas mesas ============ */
