@@ -2917,8 +2917,9 @@ function msgCobranca(cid,detalhe){
   else{
     m+=`Segue o resumo do seu fiado:\n`;
     for(const f of abertosCli(cid)){
-      m+=`\n📅 *${fdata(f.data).slice(0,5)} · ${String(f.label||'').replace(/ \(aberta\)$/,'')}*\n`;
-      linhasFiado(f).forEach(l=>{m+=`• ${l.q?l.q+'× ':''}${l.n} — ${R(l.v)}\n`});
+      const lim=t=>String(t||'').replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\uFE0F]/gu,'').replace(/\s+/g,' ').replace(/ · $/,'').trim();
+      m+=`\n📅 *${fdata(f.data).slice(0,5)} · ${lim(String(f.label||'').replace(/ \(aberta\)$/,''))}*\n`;
+      linhasFiado(f).forEach(l=>{m+=`• ${l.q?l.q+'× ':''}${lim(l.n)} — ${R(l.v)}\n`});
       if(f.jaPago>0.009)m+=`_(já pagou ${R(f.jaPago)} dessa conta)_\n`;
       m+=`Subtotal: ${R(f.resta)}\n`;
     }
@@ -2934,13 +2935,16 @@ function mCobrar(){
   const msg=UI.cob.txt??msgCobranca(c.id,UI.cob.det);
   return`<div class="mh"><h2>💬 Cobrar ${esc(c.nome)}</h2><button class="x" onclick="UI.cob=null;popModal()">✕</button></div>
    <div class="chips" style="margin-bottom:10px"><button class="tg ${UI.cob.det?'on':''}" onclick="UI.cob={det:true};refresh()">📋 Com tudo que consumiu</button><button class="tg ${!UI.cob.det?'on':''}" onclick="UI.cob={det:false};refresh()">💬 Só o valor</button></div>
+   ${onl().pix?'':`<div class="banner amb" style="margin-bottom:10px">⚡ <span style="flex:1">A chave Pix do bar não está cadastrada, por isso ela não aparece na mensagem.</span>${ehSocio(usuarioAtual())?`<input id="cobPix" placeholder="CNPJ, e-mail ou celular" style="max-width:230px"><button class="btn s p" onclick="salvarPixCob()">Salvar</button>`:'<small>Peça para um sócio cadastrar.</small>'}</div>`}
    <label class="f">Mensagem <small class="mut">dá para editar antes de mandar</small><textarea id="cobTxt" rows="14" oninput="UI.cob.txt=this.value" style="font-family:inherit;line-height:1.4">${esc(msg)}</textarea></label>
    <div class="mf"><button class="btn" onclick="copiar($('#cobTxt').value)">📋 Copiar</button><button class="btn p" onclick="enviarCobranca()">Abrir no WhatsApp</button></div>`;
 }
+function salvarPixCob(){const v=$('#cobPix').value.trim();if(v.length<5){toast('Digite a chave Pix','bad');return}
+  S.config.online=Object.assign(onl(),{pix:v.slice(0,80)});registrar('config','Cadastrou a chave Pix do bar',nomeAtual());save();UI.cob={det:UI.cob?UI.cob.det:true};refresh();toast('⚡ Chave Pix salva')}
 function enviarCobranca(){
   const c=cliById(UI.fdCli),w=foneWa(c.fone),t=$('#cobTxt').value;
   registrar('fiado',`Mandou cobrança de fiado (${R(saldoCli(c.id))}) para ${c.nome}`,nomeAtual());save();
-  window.open('https://wa.me/'+w+'?text='+encodeURIComponent(t),'_blank');UI.cob=null;popModal();
+  window.open('https://api.whatsapp.com/send?phone='+w+'&text='+encodeURIComponent(t.normalize('NFC')),'_blank');UI.cob=null;popModal();
 }
 
 function cobrarFiado(cid){
