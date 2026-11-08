@@ -783,7 +783,8 @@ async function confirmPay(){
     c.pagamentos.push({id:pid,valor,forma:p.forma,pessoaId:null,label:'para '+nome,troco,ts:Date.now(),itemIds:[]});
     (c.extras||(c.extras=[])).push({id:uid(),tipo:'caixinha',nome,valor,forma:p.forma,pagId:pid,ts:Date.now()});
     UI.pay=null;save();toast(`🎁 ${R(valor)} para ${esc(nome)}`);refresh();render();return}
-  c.pagamentos.push({id:uid(),valor,forma:p.forma,pessoaId:p.pessoaId||null,label:(p.label||'')+(cli?(p.label?' · ':'')+'fiado de '+cli.nome:''),troco,ts:Date.now(),itemIds:p.itemIds||[],...(cli?{clienteId:cli.id}:{})});
+  const det=cli?detFiado(c,p,valor):null;
+  c.pagamentos.push({id:uid(),valor,forma:p.forma,pessoaId:p.pessoaId||null,...(det?{det}:{}),label:(p.label||'')+(cli?(p.label?' · ':'')+'fiado de '+cli.nome:''),troco,ts:Date.now(),itemIds:p.itemIds||[],...(cli?{clienteId:cli.id}:{})});
   if(cli)registrar('fiado',`${cli.nome} pendurou ${R(valor)} · ${labelC(c)}`,nomeAtual());
   (p.itemIds||[]).forEach(id=>{const i=c.itens.find(x=>x.id===id);if(i)i.pago=true});
   UI.pay=null;UI.sel=[];save();
@@ -2757,8 +2758,8 @@ function nvCard(){
 const cliById=id=>(S.clientes||[]).find(c=>c.id===id);
 function fiadoLanc(cid){ // tudo que o cliente pendurou (vendas fechadas e mesas abertas)
   const L=[];
-  S.vendas.forEach(v=>(v.pagamentos||[]).forEach(p=>{if(p.forma==='Fiado'&&p.clienteId===cid)L.push({tipo:'fiado',id:p.id,valor:p.valor,data:v.data,ts:p.ts||v.ts,label:v.label,itens:v.itens,vendaId:v.id})}));
-  S.abertas.forEach(c=>(c.pagamentos||[]).forEach(p=>{if(p.forma==='Fiado'&&p.clienteId===cid)L.push({tipo:'fiado',id:p.id,valor:p.valor,data:iso(p.ts),ts:p.ts,label:labelC(c)+' (aberta)',itens:c.itens,aberta:true})}));
+  S.vendas.forEach(v=>(v.pagamentos||[]).forEach(p=>{if(p.forma==='Fiado'&&p.clienteId===cid)L.push({tipo:'fiado',id:p.id,valor:p.valor,data:v.data,ts:p.ts||v.ts,label:v.label,itens:v.itens,vendaId:v.id,det:p.det,vtotal:v.total})}));
+  S.abertas.forEach(c=>(c.pagamentos||[]).forEach(p=>{if(p.forma==='Fiado'&&p.clienteId===cid)L.push({tipo:'fiado',id:p.id,valor:p.valor,data:iso(p.ts),ts:p.ts,label:labelC(c)+' (aberta)',itens:c.itens,aberta:true,det:p.det})}));
   return L;
 }
 const fiadoPagos=cid=>(S.fiadoPg||[]).filter(p=>p.clienteId===cid);
@@ -2884,13 +2885,68 @@ function receberFiado(){
   const ns=r2(s-v);toast(ns<=0.009?`🎉 ${esc(c.nome)} quitou o fiado!`:`💵 Recebido ${R(v)} · ainda deve ${R(ns)}`);
   if(UI.modals.length)refresh();
 }
+
+function detFiado(c,p,valor){ // o que foi consumido nessa parte pendurada
+  const ln=i=>({q:i.qtd,n:i.nome+((i.adic||[]).length?' ('+i.adic.join(', ')+')':''),v:r2(i.preco*i.qtd)});
+  let L=[];
+  if((p.itemIds||[]).length)L=c.itens.filter(i=>p.itemIds.includes(i.id)).map(ln);
+  else if(p.pessoaId)L=c.itens.filter(i=>i.pessoaId===p.pessoaId).map(ln);
+  else{const t=calc(c);if(valor>=t.total-sum(c.pagamentos,x=>x.valor)-0.01&&!c.pagamentos.length)L=c.itens.map(ln)}
+  const sm=r2(sum(L,x=>x.v));
+  if(valor-sm>0.009)L.push({q:0,n:L.length?(p.pessoaId?'Parte dividida da mesa / serviço':'Serviço / ajustes'):'Parte da conta de '+labelC(c),v:r2(valor-sm)});
+  else if(sm-valor>0.009)L.push({q:0,n:'Já pago na hora',v:r2(valor-sm)});
+  return L;
+}
+function abertosCli(cid){ // fiados ainda não pagos, abatendo pagamentos dos mais antigos
+  let pago=sum(fiadoPagos(cid),x=>x.valor);const out=[];
+  for(const f of fiadoLanc(cid).sort((a,b)=>a.ts-b.ts)){
+    if(pago>=f.valor-0.009){pago-=f.valor;continue}
+    out.push({...f,jaPago:r2(pago),resta:r2(f.valor-pago)});pago=0;
+  }
+  return out;
+}
+function linhasFiado(f){
+  if(f.det&&f.det.length)return f.det;
+  if(f.itens&&f.vtotal!=null&&Math.abs(f.vtotal-f.valor)<0.01)return f.itens.map(i=>({q:i.qtd,n:i.nome,v:r2(i.preco*i.qtd)}));
+  return[{q:0,n:'Consumo · '+(f.label||''),v:f.valor}];
+}
+function msgCobranca(cid,detalhe){
+  const c=cliById(cid),s=saldoCli(cid),o=onl(),nm=c.nome.split(' ')[0];
+  let m=`Oi, ${nm}! Tudo bem? 😊\nAqui é do *${S.config.nome}*. `;
+  if(!detalhe)m+=`Passando só pra lembrar do seu fiado com a gente: *${R(s)}*.\n`;
+  else{
+    m+=`Segue o resumo do seu fiado:\n`;
+    for(const f of abertosCli(cid)){
+      m+=`\n📅 *${fdata(f.data).slice(0,5)} · ${String(f.label||'').replace(/ \(aberta\)$/,'')}*\n`;
+      linhasFiado(f).forEach(l=>{m+=`• ${l.q?l.q+'× ':''}${l.n} — ${R(l.v)}\n`});
+      if(f.jaPago>0.009)m+=`_(já pagou ${R(f.jaPago)} dessa conta)_\n`;
+      m+=`Subtotal: ${R(f.resta)}\n`;
+    }
+    const pg=fiadoPagos(cid).sort((a,b)=>a.ts-b.ts);
+    if(pg.length&&abertosCli(cid).some(f=>f.jaPago>0.009))m+=`\n💵 Último pagamento: ${fdata(pg[pg.length-1].data).slice(0,5)} · ${R(pg[pg.length-1].valor)}\n`;
+    m+=`\n*Total a pagar: ${R(s)}*\n`;
+  }
+  m+=`${o.pix?`\nSe quiser acertar no Pix, a chave é: ${o.pix}\n`:''}Pode ser também aqui no bar, quando passar. Obrigado pela preferência! 🍻`;
+  return m;
+}
+function mCobrar(){
+  const c=cliById(UI.fdCli);if(!c)return'';UI.cob=UI.cob||{det:true};
+  const msg=UI.cob.txt??msgCobranca(c.id,UI.cob.det);
+  return`<div class="mh"><h2>💬 Cobrar ${esc(c.nome)}</h2><button class="x" onclick="UI.cob=null;popModal()">✕</button></div>
+   <div class="chips" style="margin-bottom:10px"><button class="tg ${UI.cob.det?'on':''}" onclick="UI.cob={det:true};refresh()">📋 Com tudo que consumiu</button><button class="tg ${!UI.cob.det?'on':''}" onclick="UI.cob={det:false};refresh()">💬 Só o valor</button></div>
+   <label class="f">Mensagem <small class="mut">dá para editar antes de mandar</small><textarea id="cobTxt" rows="14" oninput="UI.cob.txt=this.value" style="font-family:inherit;line-height:1.4">${esc(msg)}</textarea></label>
+   <div class="mf"><button class="btn" onclick="copiar($('#cobTxt').value)">📋 Copiar</button><button class="btn p" onclick="enviarCobranca()">Abrir no WhatsApp</button></div>`;
+}
+function enviarCobranca(){
+  const c=cliById(UI.fdCli),w=foneWa(c.fone),t=$('#cobTxt').value;
+  registrar('fiado',`Mandou cobrança de fiado (${R(saldoCli(c.id))}) para ${c.nome}`,nomeAtual());save();
+  window.open('https://wa.me/'+w+'?text='+encodeURIComponent(t),'_blank');UI.cob=null;popModal();
+}
+
 function cobrarFiado(cid){
-  const c=cliById(cid);if(!c)return;const w=foneWa(c.fone);
-  if(!w){toast('Cadastre o WhatsApp do cliente primeiro','amb');UI.fdCli=cid;if(!UI.modals.length)pushModal(mCliente,true);return}
-  const s=saldoCli(cid),o=onl();
-  const msg=`Oi, ${c.nome.split(' ')[0]}! Tudo bem? 😊\nAqui é do ${S.config.nome}. Passando só pra lembrar do seu fiado com a gente: *${R(s)}*.\n${o.pix?`Se quiser acertar no Pix, a chave é: ${o.pix}\n`:''}Pode ser também aqui no bar, quando passar. Obrigado pela preferência! 🍻`;
-  registrar('fiado',`Mandou lembrete de fiado (${R(s)}) para ${c.nome}`,nomeAtual());save();
-  window.open('https://wa.me/'+w+'?text='+encodeURIComponent(msg),'_blank');
+  const c=cliById(cid);if(!c)return;UI.fdCli=cid;
+  if(!foneWa(c.fone)){toast('Cadastre o WhatsApp do cliente primeiro','amb');if(!UI.modals.length)pushModal(mCliente,true);return}
+  UI.cob={det:true};pushModal(mCobrar,true);
 }
 
 /* ============ pedidos online: delivery e QR code nas mesas ============ */
